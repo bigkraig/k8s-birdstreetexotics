@@ -13,11 +13,12 @@ warbler) from here.
   single-namespace-syncs every object into the host ns `birdstreetexotics`.
 - Workloads run under **Kata** microVMs (`runtimeClassName: kata`) — set a memory
   `limits` or the guest OOM-kills.
-- **TLS:** Traefik's default cert is `*.warbler.haus`; this domain is neither the
-  default nor the bigkraig catchall, so its Ingress MUST name its own secret
-  (`birdstreetexotics-wildcard-tls`, issued by ROOT cert-manager into host ns
-  `birdstreetexotics`). Tenant Ingresses use `router.tls: "true"` + explicit
-  `tls.secretName`.
+- **TLS:** Traefik's default cert is `*.warbler.haus`. This domain's wildcard cert
+  (`birdstreetexotics-wildcard-tls`, issued by ROOT cert-manager into `kube-system`)
+  is loaded into Traefik's SNI pool by the host `birdstreetexotics-catchall`
+  IngressRoute. Tenant Ingresses use ONLY `router.tls: "true"` — do NOT set
+  `spec.tls`/`secretName` (vcluster mangles it on sync, so Traefik can't find it and
+  falls back to the warbler cert).
 - Argo `selfHeal` reverts manual `kubectl` edits — change `replicas:`/config in git.
 
 ## Landing page

@@ -155,10 +155,9 @@ metadata:
     traefik.ingress.kubernetes.io/router.tls: "true"
     traefik.ingress.kubernetes.io/router.priority: "1000"
 spec:
+  # No spec.tls secret: the cert is loaded into Traefik by the kube-system
+  # birdstreetexotics-catchall route (vcluster would mangle a tls.secretName here).
   ingressClassName: traefik
-  tls:
-    - hosts: [birdstreetexotics.com, www.birdstreetexotics.com]
-      secretName: birdstreetexotics-wildcard-tls   # issued by root cert-manager into host ns `landing`
   rules:
     - host: birdstreetexotics.com
       http:
