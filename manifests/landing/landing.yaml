@@ -58,7 +58,7 @@ data:
     </head>
     <body>
       <main class="wrap">
-        <img class="logo" src="logo.png" alt="Bird Street Exotics" width="460">
+        <img class="logo" src="logo.png?v=1" alt="Bird Street Exotics" width="460">
         <div class="rule"></div>
         <p class="lede">Something <span style="color:#c9a15a">exceptional</span> is on its way.<br>
           For inquiries, reach us at
