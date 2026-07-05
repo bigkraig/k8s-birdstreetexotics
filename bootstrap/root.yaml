@@ -1,0 +1,24 @@
+# App-of-apps root. Applied once at bootstrap (see README); thereafter Argo
+# reconciles every Application under apps/ automatically.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:bigkraig/k8s-birdstreetexotics.git
+    targetRevision: main
+    path: apps
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

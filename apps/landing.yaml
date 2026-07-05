@@ -1,0 +1,23 @@
+# Landing page for birdstreetexotics.com (static nginx). Public, ungated.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: landing
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:bigkraig/k8s-birdstreetexotics.git
+    targetRevision: main
+    path: manifests/landing
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: landing
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
