@@ -1,0 +1,166 @@
+# Warbler tenant monitoring — a self-contained kube-prometheus-stack INSIDE the warbler vcluster
+# (Prometheus + Grafana + Alertmanager + kube-state-metrics). Tenant-scoped: it only sees warbler's
+# own apps + CNPG + this vcluster's object state. Host/node/control-plane scraping is OFF — a
+# vcluster has no real node, and scraping the host kubelet/cadvisor would leak cross-tenant metrics.
+# DELIBERATE LIMITATION (decided 2026-07): no cadvisor here → NO live container CPU/mem in this
+# Grafana (kube-state-metrics gives object state + requests/limits, not usage). vcluster flattens
+# all warbler namespaces into the single host ns `warbler`, so a clean tenant-scoped cadvisor scrape
+# isn't possible without leaking other tenants or breaking the namespace/pod join. Live container
+# CPU/mem for warbler is instead viewed in the OPERATOR Grafana (monitor.bigkraig.com) — its cadvisor
+# already covers namespace=warbler. Do NOT re-enable kubelet here expecting isolated usage metrics.
+# Grafana at monitor.birdstreetexotics.com behind the warbler oauth2-proxy gate (auth.proxy header trust),
+# same approach as the operator Grafana. runc (monitoring-infra exception, like the root stack).
+# Alertmanager→ntfy routing (ntfy.warbler.haus) is added in a follow-up once ntfy is bootstrapped.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: 87.5.1
+    helm:
+      releaseName: kube-prometheus-stack
+      values: |
+        # No host/node/control-plane targets in a vcluster (no real node; cadvisor = host = cross-tenant).
+        nodeExporter:          { enabled: false }
+        kubelet:               { enabled: false }
+        kubeApiServer:         { enabled: false }
+        kubeControllerManager: { enabled: false }
+        kubeScheduler:         { enabled: false }
+        kubeProxy:             { enabled: false }
+        kubeEtcd:              { enabled: false }
+        coreDns:               { enabled: false }
+        kubeStateMetrics:      { enabled: true }
+        # Many built-in rules depend on node/kubelet metrics we don't have here — keep only the
+        # ones that work on tenant-scope object metrics; silence the node/kubelet-based groups.
+        defaultRules:
+          create: true
+          rules:
+            kubernetesSystem: false
+            kubelet: false
+            node: false
+            nodeExporterAlerting: false
+            nodeExporterRecording: false
+            windows: false
+            etcd: false
+            kubeScheduler: false
+            kubeControllerManager: false
+        prometheus:
+          prometheusSpec:
+            retention: 15d
+            retentionSize: "8GB"
+            serviceMonitorSelectorNilUsesHelmValues: false
+            podMonitorSelectorNilUsesHelmValues: false
+            ruleSelectorNilUsesHelmValues: false
+            probeSelectorNilUsesHelmValues: false
+            resources:
+              requests: { cpu: 100m, memory: 384Mi }
+              limits:   { memory: 1Gi }
+            storageSpec:
+              volumeClaimTemplate:
+                spec:
+                  storageClassName: ssd-block
+                  accessModes: ["ReadWriteOnce"]
+                  resources: { requests: { storage: 10Gi } }
+        alertmanager:
+          config:
+            route:
+              group_by: ['alertname', 'namespace']
+              group_wait: 30s
+              group_interval: 5m
+              repeat_interval: 4h
+              receiver: 'ntfy'
+              routes:
+                # Watchdog fires constantly (dead-man's-switch); swallow it here rather
+                # than page. Add an external hc-ping receiver later if you want liveness.
+                - matchers: ['alertname = "Watchdog"']
+                  receiver: 'null'
+            receivers:
+              - name: 'null'
+              - name: 'ntfy'
+                webhook_configs:
+                  - url: 'http://alertmanager-ntfy.monitoring.svc.cluster.local:8000/hook'
+                    send_resolved: true
+          alertmanagerSpec:
+            resources:
+              requests: { cpu: 20m, memory: 64Mi }
+              limits:   { memory: 128Mi }
+            storage:
+              volumeClaimTemplate:
+                spec:
+                  storageClassName: ssd-block
+                  accessModes: ["ReadWriteOnce"]
+                  resources: { requests: { storage: 1Gi } }
+        grafana:
+          defaultDashboardsEnabled: true
+          # Break-glass admin password from the grafana-admin SealedSecret (replaces the default
+          # prom-operator); day-to-day login is via the warbler gate → auth.proxy.
+          envFromSecret: grafana-admin
+          # CloudNativePG dashboard for warbler's own DBs (affine-db, dispatcharr-db). No
+          # node-exporter/cert-manager/velero here — those are operator-cluster scoped.
+          dashboardProviders:
+            dashboardproviders.yaml:
+              apiVersion: 1
+              providers:
+                - name: gnet
+                  orgId: 1
+                  folder: Community
+                  type: file
+                  disableDeletion: false
+                  editable: true
+                  options:
+                    path: /var/lib/grafana/dashboards/gnet
+          dashboards:
+            gnet:
+              cloudnativepg: { gnetId: 20417, revision: 4, datasource: Prometheus }
+          deploymentStrategy:
+            type: Recreate           # ssd-block RWO single-mount
+          persistence:
+            enabled: true
+            storageClassName: ssd-block
+            size: 3Gi
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits:   { memory: 384Mi }
+          grafana.ini:
+            server:
+              root_url: https://monitor.birdstreetexotics.com
+            auth:
+              disable_login_form: true
+            auth.proxy:
+              enabled: true
+              header_name: X-Auth-Request-Email
+              header_property: email
+              auto_sign_up: true
+              headers: "Login:X-Auth-Request-User Groups:X-Auth-Request-Groups"
+              whitelist: 10.42.0.0/16
+            users:
+              auto_assign_org_role: Admin   # gate admits only warbler Pocket ID users
+          ingress:
+            enabled: true
+            ingressClassName: traefik
+            annotations:
+              traefik.ingress.kubernetes.io/router.entrypoints: websecure
+              traefik.ingress.kubernetes.io/router.tls: "true"
+              traefik.ingress.kubernetes.io/router.priority: "1000"
+              traefik.ingress.kubernetes.io/router.middlewares: kube-system-oauth-auth-birdstreetexotics@kubernetescrd
+            hosts:
+              - monitor.birdstreetexotics.com
+            path: /
+            pathType: Prefix
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true        # kube-prometheus-stack CRDs are large → avoid client-side apply limit

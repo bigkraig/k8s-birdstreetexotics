@@ -1,0 +1,86 @@
+# ntfy — birdstreetexotics push notifications. Exposed at ntfy.birdstreetexotics.com,
+# UNGATED at Traefik (the ntfy app can't do the OIDC gate) — ntfy's own auth instead:
+# auth-default-access=deny-all. NO spec.tls (the kube-system catchall loads the wildcard
+# cert; vcluster would mangle a secretName). One-time bootstrap after first deploy:
+#   kbse -n monitoring exec -it deploy/ntfy -- ntfy user add --role=admin kraig   # set a password
+#   kbse -n monitoring exec deploy/ntfy -- ntfy access kraig 'alerts' rw
+# Then log into https://ntfy.birdstreetexotics.com, subscribe to topic "alerts".
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: { name: ntfy-config, namespace: monitoring }
+data:
+  server.yml: |
+    base-url: https://ntfy.birdstreetexotics.com
+    listen-http: ":80"
+    auth-file: /var/lib/ntfy/user.db
+    auth-default-access: deny-all
+    cache-file: /var/lib/ntfy/cache.db
+    attachment-cache-dir: /var/lib/ntfy/attachments
+    behind-proxy: true
+    enable-login: true
+    enable-signup: false
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: { name: ntfy-data, namespace: monitoring }
+spec:
+  storageClassName: ssd-block
+  accessModes: [ReadWriteOnce]
+  resources: { requests: { storage: 1Gi } }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: ntfy, namespace: monitoring }
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector: { matchLabels: { app: ntfy } }
+  template:
+    metadata: { labels: { app: ntfy } }
+    spec:
+      securityContext: { runAsUser: 0, fsGroup: 0 }
+      containers:
+        - name: ntfy
+          image: binwiederhier/ntfy:v2.25.0
+          args: ["serve"]
+          ports: [{ name: http, containerPort: 80 }]
+          volumeMounts:
+            - { name: config, mountPath: /etc/ntfy }
+            - { name: data,   mountPath: /var/lib/ntfy }
+          resources:
+            requests: { cpu: 20m, memory: 32Mi }
+            limits:   { memory: 128Mi }
+          readinessProbe:
+            httpGet: { path: /v1/health, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - { name: config, configMap: { name: ntfy-config } }
+        - { name: data,   persistentVolumeClaim: { claimName: ntfy-data } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: ntfy, namespace: monitoring }
+spec:
+  selector: { app: ntfy }
+  ports: [{ name: http, port: 80, targetPort: http }]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ntfy
+  namespace: monitoring
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.priority: "1000"
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: ntfy.birdstreetexotics.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: ntfy, port: { number: 80 } } }

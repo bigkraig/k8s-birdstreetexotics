@@ -1,0 +1,23 @@
+# Warbler tenant ntfy (self-hosted push at ntfy.warbler.haus) for tenant alerting.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ntfy
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:bigkraig/k8s-birdstreetexotics.git
+    targetRevision: main
+    path: manifests/ntfy
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
