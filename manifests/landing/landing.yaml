@@ -58,10 +58,10 @@ data:
     </head>
     <body>
       <main class="wrap">
-        <img class="logo" src="logo.png" alt="Bird Street Exotics" width="460">
+        <div class="kicker">Bird Street Exotics</div>
+        <h1>Something <span class="accent">exceptional</span><br>is on its way.</h1>
         <div class="rule"></div>
-        <p class="lede">Something <span style="color:#c9a15a">exceptional</span> is on its way.<br>
-          For inquiries, reach us at
+        <p class="lede">For inquiries, reach us at
           <a class="contact" href="mailto:kraig@birdstreetexotics.com">kraig@birdstreetexotics.com</a>.</p>
         <footer>&copy; Bird Street Exotics</footer>
       </main>
@@ -104,13 +104,8 @@ spec:
             requests: { cpu: 10m, memory: 32Mi }
             limits:   { memory: 128Mi }
       volumes:
-        # Merge the HTML (landing-html) and the logo binary (landing-assets, see
-        # logo-configmap.yaml) into one dir so nginx serves index.html + logo.png.
         - name: html
-          projected:
-            sources:
-              - configMap: { name: landing-html }
-              - configMap: { name: landing-assets }
+          configMap: { name: landing-html }
 ---
 apiVersion: v1
 kind: Service
