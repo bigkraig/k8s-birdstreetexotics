@@ -1,0 +1,28 @@
+# CloudNativePG operator — managed Postgres for the tenant. App-agnostic
+# infra; actual databases are `Cluster` CRs created per-app (on ssd-block, with
+# continuous backup to B2). Operator only here.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cnpg
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://cloudnative-pg.github.io/charts
+    chart: cloudnative-pg
+    targetRevision: 0.29.0          # operator v1.30
+    helm:
+      releaseName: cnpg
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cnpg-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true        # CNPG CRDs are large -> avoid client-side apply limit
