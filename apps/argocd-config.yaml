@@ -1,0 +1,21 @@
+# Argo CD managing its own config (self-config). Exposure now; OIDC next.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd-config
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:bigkraig/k8s-birdstreetexotics.git
+    targetRevision: main
+    path: manifests/argocd-config
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

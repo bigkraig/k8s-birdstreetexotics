@@ -1,0 +1,39 @@
+# Argo CD self-config (Argo manages its own config via GitOps).
+# Step 1 here: run argocd-server insecure (Traefik terminates TLS) + expose it at
+# argocd.birdstreetexotics.com. Step 2 (OIDC via Pocket ID) is appended once the OIDC client
+# exists. After changing cmd-params, restart argocd-server once.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cmd-params-cm
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-cmd-params-cm
+    app.kubernetes.io/part-of: argocd
+data:
+  server.insecure: "true"     # TLS is terminated at Traefik; server talks plain HTTP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-server
+  namespace: argocd
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.priority: "1000"
+    traefik.ingress.kubernetes.io/router.middlewares: kube-system-oauth-auth-birdstreetexotics@kubernetescrd
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: argocd.birdstreetexotics.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: argocd-server
+                port:
+                  number: 80
