@@ -89,19 +89,25 @@ spec:
         # Stage the web root: index.html from the ConfigMap + logo.png pulled from
         # the PRIVATE B2 bucket (creds from the sealed landing-b2-creds). Keeps the
         # binary out of a ConfigMap and the bucket private.
+        # curlimages/curl (unlike amazon/aws-cli) has no v3 file-cap xattr, so it
+        # extracts on the zfs snapshotter. Uses B2's native download API with the
+        # same key (AWS_ACCESS_KEY_ID=B2 keyID, AWS_SECRET_ACCESS_KEY=B2 appKey).
         - name: assets
-          image: amazon/aws-cli:2.15.30
+          image: curlimages/curl:8.11.1
           command:
             - sh
             - -c
-            - >
-              cp /html-src/index.html /webroot/index.html &&
-              aws --endpoint-url https://s3.us-west-004.backblazeb2.com
-              s3 cp s3://ultra-piggy-birdstreetexotics/logo.png /webroot/logo.png
+            - |
+              set -e
+              cp /html-src/index.html /webroot/index.html
+              auth=$(curl -sf -u "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
+                https://api.backblazeb2.com/b2api/v2/b2_authorize_account)
+              tok=$(printf '%s' "$auth" | sed -n 's/.*"authorizationToken":"\([^"]*\)".*/\1/p')
+              dl=$(printf '%s' "$auth" | sed -n 's/.*"downloadUrl":"\([^"]*\)".*/\1/p')
+              curl -sf -H "Authorization: $tok" \
+                "$dl/file/ultra-piggy-birdstreetexotics/logo.png" -o /webroot/logo.png
           envFrom:
             - secretRef: { name: landing-b2-creds }
-          env:
-            - { name: AWS_REGION, value: us-west-004 }
           volumeMounts:
             - { name: webroot,  mountPath: /webroot }
             - { name: html-src, mountPath: /html-src }
