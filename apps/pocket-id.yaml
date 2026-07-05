@@ -1,0 +1,24 @@
+# Pocket ID — the tenant's OIDC provider (passkey-based). Argo deploys
+# everything under manifests/pocket-id into the vcluster.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: pocket-id
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:bigkraig/k8s-birdstreetexotics.git
+    targetRevision: main
+    path: manifests/pocket-id
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: pocket-id
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
