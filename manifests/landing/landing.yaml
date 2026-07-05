@@ -52,15 +52,16 @@ data:
         .rule { width: 3rem; height: 2px; background: #c9a15a; margin: 2rem auto; opacity: 0.8; }
         a.contact { color: #e8e8ea; text-decoration: none; border-bottom: 1px solid #c9a15a55; padding-bottom: 2px; }
         a.contact:hover { border-color: #c9a15a; }
-        footer { margin-top: 2.5rem; font-size: 0.8rem; color: #6b7079; }
+        .logo { width: min(460px, 84vw); height: auto; filter: drop-shadow(0 10px 44px rgba(0,0,0,0.55)); }
+        footer { margin-top: 2.5rem; font-size: 0.8rem; color: #6b7079; letter-spacing: 0.05em; }
       </style>
     </head>
     <body>
       <main class="wrap">
-        <div class="kicker">Bird Street Exotics</div>
-        <h1>Something <span class="accent">exceptional</span><br>is on its way.</h1>
+        <img class="logo" src="logo.png" alt="Bird Street Exotics" width="460">
         <div class="rule"></div>
-        <p class="lede">Our new home is under construction. For inquiries, reach us at
+        <p class="lede">Something <span style="color:#c9a15a">exceptional</span> is on its way.<br>
+          For inquiries, reach us at
           <a class="contact" href="mailto:kraig@birdstreetexotics.com">kraig@birdstreetexotics.com</a>.</p>
         <footer>&copy; Bird Street Exotics</footer>
       </main>
@@ -103,8 +104,13 @@ spec:
             requests: { cpu: 10m, memory: 32Mi }
             limits:   { memory: 128Mi }
       volumes:
+        # Merge the HTML (landing-html) and the logo binary (landing-assets, see
+        # logo-configmap.yaml) into one dir so nginx serves index.html + logo.png.
         - name: html
-          configMap: { name: landing-html }
+          projected:
+            sources:
+              - configMap: { name: landing-html }
+              - configMap: { name: landing-assets }
 ---
 apiVersion: v1
 kind: Service
