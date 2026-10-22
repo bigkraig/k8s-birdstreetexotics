@@ -35,7 +35,7 @@ spec:
     spec:
       containers:
         - name: pocket-id
-          image: ghcr.io/pocket-id/pocket-id:v2
+          image: ghcr.io/pocket-id/pocket-id:v2.19.1@sha256:f085157f0b6ea4b2e8aa5ecfd99eada0d83a4960f3a3dcfd46014097d0ef7ab5   # pinned: the floating :v2 tag never re-pulls (IfNotPresent), it sat on 2.9.0
           ports:
             - containerPort: 1411
           env:
