@@ -2,7 +2,7 @@
 # virtiofs share — Pocket ID warns that SQLite on a network/FUSE filesystem can corrupt). Creates the
 # `pocketid` database + owner and a `pocket-id-db-app` secret whose `uri` key is the connection
 # string Pocket ID reads (DB_CONNECTION_STRING).
-# TODO: no off-site backups yet — add a barmanObjectStore (B2) once this tenant has a bucket.
+# No off-site backups for this tenant — a deliberate decision (2026-10-25), not an oversight.
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
 metadata:
