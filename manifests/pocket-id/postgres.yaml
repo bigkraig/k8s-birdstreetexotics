@@ -1,0 +1,22 @@
+# Postgres for Pocket ID via CloudNativePG (replaces SQLite on the pod's volume, which under Kata is a
+# virtiofs share — Pocket ID warns that SQLite on a network/FUSE filesystem can corrupt). Creates the
+# `pocketid` database + owner and a `pocket-id-db-app` secret whose `uri` key is the connection
+# string Pocket ID reads (DB_CONNECTION_STRING).
+# TODO: no off-site backups yet — add a barmanObjectStore (B2) once this tenant has a bucket.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pocket-id-db
+  namespace: pocket-id
+spec:
+  instances: 1
+  imageName: ghcr.io/cloudnative-pg/postgresql:18.4-system-trixie
+  monitoring:
+    enablePodMonitor: true
+  storage:
+    size: 2Gi
+    storageClass: ssd-block
+  bootstrap:
+    initdb:
+      database: pocketid
+      owner: pocketid
