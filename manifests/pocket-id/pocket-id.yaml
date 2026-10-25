@@ -1,20 +1,8 @@
 # Pocket ID: OIDC/passkey identity provider for birdstreetexotics.
-# State on ssd-block (NVMe mirror). Exposed at https://id.birdstreetexotics.com via a
+# State lives in Postgres (postgres.yaml); the pod itself is stateless.
 # standard Ingress the vcluster syncs to root Traefik. Unlike warbler (default cert),
 # this domain names its own cert (birdstreetexotics-wildcard-tls, issued by root
 # cert-manager into the host tenant ns). Passkeys REQUIRE real HTTPS at this host.
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: pocket-id-data
-  namespace: pocket-id
-spec:
-  storageClassName: ssd-block
-  accessModes: [ReadWriteOnce]
-  resources:
-    requests:
-      storage: 2Gi
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -57,8 +45,7 @@ spec:
                   name: pocket-id-db-app
                   key: uri
             - { name: FILE_BACKEND, value: "database" }
-          # /app/data now only holds the GeoLite cache + the pre-migration SQLite files, kept until
-          # 2026-11-01 for rollback (revert this commit). Then swap it for an emptyDir + drop the PVC.
+          # /app/data: GeoLite cache only — all state (users, passkeys, uploads) is in Postgres.
           volumeMounts:
             - name: data
               mountPath: /app/data
@@ -69,8 +56,7 @@ spec:
             periodSeconds: 10
       volumes:
         - name: data
-          persistentVolumeClaim:
-            claimName: pocket-id-data
+          emptyDir: { sizeLimit: 256Mi }
 ---
 apiVersion: v1
 kind: Service
