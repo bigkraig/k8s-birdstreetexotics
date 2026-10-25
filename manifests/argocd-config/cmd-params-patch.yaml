@@ -1,0 +1,10 @@
+# Patch over the upstream argocd-cmd-params-cm (kustomization.yaml).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cmd-params-cm
+  labels:
+    app.kubernetes.io/name: argocd-cmd-params-cm
+    app.kubernetes.io/part-of: argocd
+data:
+  server.insecure: "true"     # TLS is terminated at Traefik; server talks plain HTTP

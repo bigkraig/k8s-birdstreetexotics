@@ -1,11 +1,10 @@
-# Argo CD managing its own config (self-config). Exposure now; OIDC next.
+# Argo CD manages ITSELF: the pinned upstream install + this tenant's config (manifests/argocd-config).
+# NO resources-finalizer on purpose — deleting/pruning this app must never cascade-delete Argo.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: argocd-config
   namespace: argocd
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   source:
@@ -19,3 +18,5 @@ spec:
     automated:
       prune: true
       selfHeal: true
+    syncOptions:
+      - ServerSideApply=true   # ApplicationSet CRD exceeds the client-side-apply annotation limit

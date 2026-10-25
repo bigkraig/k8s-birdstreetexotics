@@ -1,0 +1,16 @@
+# Argo CD manages ITSELF from here (app argocd-config): the upstream install pinned to a release,
+# plus this tenant's config layered on top. Upgrading Argo = bump the version in the URL below.
+#  - ConfigMaps are PATCHES over upstream's (upstream ships argocd-cm/-cmd-params-cm/-rbac-cm),
+#    so upstream defaults and our keys live in one object with one owner.
+#  - Argo's bundled NetworkPolicies are deleted (they break intra-Argo traffic in this vcluster —
+#    see ultra-piggy CLAUDE.md).
+#  - Needs ServerSideApply (the ApplicationSet CRD is too big for client-side apply's annotation).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: argocd
+resources:
+  - https://raw.githubusercontent.com/argoproj/argo-cd/v3.4.12/manifests/install.yaml
+  - ingress.yaml
+patches:
+  - path: cmd-params-patch.yaml
+  - path: netpol-deletes.yaml
