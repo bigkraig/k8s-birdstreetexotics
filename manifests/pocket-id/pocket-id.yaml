@@ -49,6 +49,16 @@ spec:
                 secretKeyRef:
                   name: pocket-id-secrets
                   key: encryption-key
+            # Postgres (postgres.yaml) since 2026-10-25 — off SQLite-on-virtiofs. Uploads live in the
+            # DB too (FILE_BACKEND=database), so nothing of value is on the volume any more.
+            - name: DB_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: pocket-id-db-app
+                  key: uri
+            - { name: FILE_BACKEND, value: "database" }
+          # /app/data now only holds the GeoLite cache + the pre-migration SQLite files, kept until
+          # 2026-11-01 for rollback (revert this commit). Then swap it for an emptyDir + drop the PVC.
           volumeMounts:
             - name: data
               mountPath: /app/data
