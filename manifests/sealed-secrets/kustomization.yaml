@@ -1,0 +1,8 @@
+# Sealed Secrets controller — the upstream release manifest, pinned. Upgrading = bump the version in
+# the URL (renders byte-identical to the old vendored copy of the same release). The Bitnami helm
+# repo is 404, so the release asset is the stable source. Installs into the vcluster's kube-system.
+# BACK UP the controller key (secret sealed-secrets-key* in kube-system).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.40.0/controller.yaml
