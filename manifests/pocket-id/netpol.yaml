@@ -1,6 +1,5 @@
 # Intra-tenant traffic is default-deny (platform policy); vcluster syncs this to the host.
-# Only Pocket ID itself — and the one-off SQLite→Postgres import job (app=pocket-id-migrate, remove
-# after the migration) — may reach its database.
+# Only Pocket ID itself may reach its database.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -14,7 +13,6 @@ spec:
   ingress:
     - from:
         - podSelector:
-            matchExpressions:
-              - { key: app, operator: In, values: [pocket-id, pocket-id-migrate] }
+            matchLabels: { app: pocket-id }
       ports:
         - { protocol: TCP, port: 5432 }
