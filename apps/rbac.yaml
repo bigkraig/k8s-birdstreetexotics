@@ -1,0 +1,21 @@
+# rbac — OIDC-group kubectl identities for the birdstreetexotics vcluster. See ultra-piggy/docs/auth-oidc-upgrade.md.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: rbac
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:bigkraig/k8s-birdstreetexotics.git
+    targetRevision: main
+    path: manifests/rbac
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

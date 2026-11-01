@@ -1,0 +1,16 @@
+# OIDC group -> RBAC for kubectl via Pocket ID (id.birdstreetexotics.com). See ultra-piggy/docs/auth-oidc-upgrade.md.
+# Subjects carry the apiserver's --oidc-*-prefix (oidc:). Revoke via the Pocket ID "admins" group.
+# PRE-REQ: the id.birdstreetexotics.com Pocket ID must have an "admins" group with kraig in it (Step A).
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: oidc-admins
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: Group
+    name: oidc:admins
+    apiGroup: rbac.authorization.k8s.io
