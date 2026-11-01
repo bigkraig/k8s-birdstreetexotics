@@ -1,0 +1,29 @@
+# Postgres for workbook via CloudNativePG (birdstreetexotics tenant). workbook-api (sqlx) connects via
+# WORKBOOK_DATABASE_URL = the CNPG `workbook-db-app` uri. Single instance on ssd-block.
+# NO BACKUPS: workbook's data is disposable — workbook-api runs its baked migrations on boot and
+# repopulates content itself. Dropped the B2/barman WAL archiving (it was failing → pg_wal grew
+# until the 30Gi PVC filled → CNPG halted Postgres). Without archiving, Postgres recycles WAL
+# locally, so the disk can't fill from un-archivable WAL. Velero also skips it (regenerable).
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: workbook-db
+  namespace: workbook
+spec:
+  inheritedMetadata:
+    labels:
+      velero.io/exclude-from-backup: "true"   # regenerable data — no backups of any kind
+  instances: 1
+  imageName: ghcr.io/cloudnative-pg/postgresql:17
+  monitoring:
+    enablePodMonitor: true
+  storage:
+    size: 30Gi
+    storageClass: ssd-block
+  bootstrap:
+    initdb:
+      database: workbook
+      owner: workbook
+      postInitApplicationSQL:
+        # PG15+: the DB owner doesn't own `public` by default, so workbook can't run its CREATE migrations.
+        - ALTER SCHEMA public OWNER TO workbook

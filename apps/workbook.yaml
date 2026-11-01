@@ -1,0 +1,23 @@
+# workbook — Technical Service Information (Rust API + Next.js web + CNPG). Moved from bigkraig (was libretto).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: workbook
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:bigkraig/k8s-birdstreetexotics.git
+    targetRevision: main
+    path: manifests/workbook
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: workbook
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

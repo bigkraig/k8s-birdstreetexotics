@@ -1,0 +1,14 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: registry-creds
+  namespace: workbook
+spec:
+  encryptedData:
+    .dockerconfigjson: AgCBOoshCcwF+S7awXvq/VwbjwaZAoRkBwRfkvoGrOzp/WD4X2VNDY7HhYp0ARaswrjm8OcOytmzMoBs3eQfypBEUOziU024yJqlQLZAZU6rC7arVsOEspPvmnykM6AOgXsfJl3QSje60jJX3Ho7ycDQt/UV163yPKeA09srcWZlwCrxPV+qcTsB7ow9dTdnGgz03vsWyf+FtZYCFVTTgSup30I4WshxlQ7epg4isnYIjPtjTX1QeP20HYVm/im/mr+7dvTsRcNMu/GCdlpSMA73eTV7M+L6TNnXv21nEo4ckF7bcYhfn6kGnHk41EjUNLGlqgres0VaGpn3xMBzsYsSnyw3SlngYFvCjzLscRKnUWYvogKodcFZj0U5WglQXZPr+i0juD1TOR2iLIZMYv3inMe+VdxFpKcG3cflL1L+caGqu9SmQJqivGGxKESxUqybt2mUm3Y/Ys+VKByHr0R462mxLPfAK7SxHVV+pXBRAryRyhiqJW7KSQpbwY5Ep05grBWEgxdH4SfC1EYKW+ba97G/KSalgAyJNmcdt57AM4VdfWKSpwaKWF0IZ7LEQ10tVTrE+Ei2aoS+KuMYgPAVgaRkK8+C9d+/2WdrRu6L+hg2atkmSpM+bsOAQdLvDWHubTbNq36F3Ymx50y3fSPbEislYXJgQuvnKLJw+mejqyf0HMNft3od2QNS13lrEG52HvLTPdCZbdrmpNOMrBguKcm3rD/yaBECUgIvsreIFI/jUPtUDTlABTdTu48JqD7nl6MhjkmLEBQRJfPCol3Vs3JfjhYE3vntwDWdu5U1Y9zLYshLbMHFB7tMxjkHTdET07k5Et11U1e8evgbMN5B0xwCkYAHBgH0HUwbKd1tNFdgBUVR9i/ftURn/PPSapDuGTEFVMCW9IQC6eozgZa0ZH4P
+  template:
+    metadata:
+      name: registry-creds
+      namespace: workbook
+    type: kubernetes.io/dockerconfigjson

@@ -1,0 +1,203 @@
+# workbook (was libretto) — Technical Service Information (Rust/Axum API + Next.js web). MOVED bigkraig →
+# birdstreetexotics 2026-11-01. Images live in registry.bigkraig.com: workbook-api / workbook-web.
+# DATA: Postgres via CNPG (postgres.yaml); workbook-api (sqlx) connects via WORKBOOK_DATABASE_URL (the CNPG
+# `workbook-db-app` uri) and runs its baked /data/migrations on boot — so we do NOT mount a volume over /data
+# (only config.toml is file-mounted). Intra-tenant api→db is allowed by rel-workbook-postgresql (root netpol).
+# AUTH: both / (web) and /v1 (api) behind the WORKBOOK-ONLY Sign in with Apple gate
+#   (root manifests/auth-gate-workbook.yaml → middleware kube-system-oauth-auth-workbook), not the
+#   domain-wide Pocket ID gate. Allowed users = that gate's email allowlist ConfigMap.
+# workbook-web: NEXT_PUBLIC_API_HOST is baked at build time — build with
+#   NEXT_PUBLIC_API_HOST=https://workbook.birdstreetexotics.com (web/.env) and bump the tag below.
+# Both Kata microVMs (memory limits set — Kata OOM-kills without one). SECRETS (SealedSecrets, sealed
+#   with the birdstreetexotics cert): `registry-creds` (registry.bigkraig.com pull).
+---
+apiVersion: v1
+kind: Namespace
+metadata: { name: workbook }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: workbook-api-config
+  namespace: workbook
+data:
+  config.toml: |
+    content_database = "/data/content.sqlite3"
+
+    [importer]
+    cache_dir = "/data/cache"
+    cookie = ""
+    vehicle_image_path = "/data/images/vehicles/"
+
+    [[vehicle]]
+    vehicle = "Y1BFH1"
+    year = 2022
+    name = "Taycan Cross Turismo Turbo S"
+
+    [[vehicle]]
+    vehicle = "991810"
+    year = 2018
+    name = "991.2 GT3"
+
+    [[vehicle]]
+    vehicle = "981810"
+    year = 2016
+    name = "Cayman GT4"
+
+    [[vehicle]]
+    vehicle = "F151M"
+    year = 2017
+    name = "GTC4Lusso"
+    pcss_import = false
+
+    [api]
+    bind_address = "0.0.0.0:3030"
+    host = "https://workbook.birdstreetexotics.com"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: workbook-api
+  namespace: workbook
+spec:
+  replicas: 1
+  # Stateless (state is in CNPG; /data is the baked WORKDIR + a ConfigMap file) → zero-downtime rolling.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }
+  selector:
+    matchLabels: { app: workbook-api }
+  template:
+    metadata:
+      labels: { app: workbook-api }
+    spec:
+      runtimeClassName: kata
+      imagePullSecrets:
+        - name: registry-creds
+      containers:
+        - name: workbook-api
+          image: registry.bigkraig.com/workbook-api:0.1.35
+          env:
+            - name: WORKBOOK_DATABASE_URL
+              valueFrom: { secretKeyRef: { name: workbook-db-app, key: uri } }
+          resources:
+            requests: { cpu: 50m, memory: 256Mi }
+            limits:   { memory: 1Gi }        # Kata sizes the VM to this; without it the guest OOM-kills
+          ports:
+            - { name: http, containerPort: 3030 }
+          volumeMounts:
+            - { name: config, mountPath: /data/config.toml, subPath: config.toml }
+          readinessProbe:
+            tcpSocket: { port: 3030 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: config
+          configMap:
+            name: workbook-api-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: workbook-api           # in-cluster name the web uses: http://workbook-api:3030
+  namespace: workbook
+spec:
+  selector: { app: workbook-api }
+  ports:
+    - { name: http, port: 3030, targetPort: 3030 }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: workbook-web
+  namespace: workbook
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }
+  selector:
+    matchLabels: { app: workbook-web }
+  template:
+    metadata:
+      labels: { app: workbook-web }
+    spec:
+      runtimeClassName: kata
+      imagePullSecrets:
+        - name: registry-creds
+      containers:
+        - name: workbook-web
+          image: registry.bigkraig.com/workbook-web:0.2.25
+          resources:
+            requests: { cpu: 50m, memory: 256Mi }
+            limits:   { memory: 1Gi }
+          ports:
+            - { name: http, containerPort: 3000 }
+          readinessProbe:
+            tcpSocket: { port: 3000 }
+            initialDelaySeconds: 15
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: workbook-web
+  namespace: workbook
+spec:
+  selector: { app: workbook-web }
+  ports:
+    - { name: http, port: 3000, targetPort: 3000 }
+---
+# WEB — workbook.birdstreetexotics.com/ → workbook-web, behind the workbook Apple gate. priority 1000 beats the
+# *.birdstreetexotics.com catchall. No spec.tls: the wildcard cert is loaded by the kube-system catchall route
+# (vcluster would mangle a tls.secretName here). /oauth2/* on this host is routed to the gate at priority 3000.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: workbook-web
+  namespace: workbook
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.priority: "1000"
+    traefik.ingress.kubernetes.io/router.middlewares: kube-system-oauth-auth-workbook@kubernetescrd
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: workbook.birdstreetexotics.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: workbook-web
+                port:
+                  number: 3000
+---
+# API — workbook.birdstreetexotics.com/v1 → workbook-api. priority 2000 so the more-specific /v1 wins over / above.
+# Behind the SAME Apple gate: the browser authenticates at the UI, so its XHR to /v1 carries the
+# host-only _workbook_auth cookie → the gate returns 202.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: workbook-api
+  namespace: workbook
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.priority: "2000"
+    traefik.ingress.kubernetes.io/router.middlewares: kube-system-oauth-auth-workbook@kubernetescrd
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: workbook.birdstreetexotics.com
+      http:
+        paths:
+          - path: /v1
+            pathType: Prefix
+            backend:
+              service:
+                name: workbook-api
+                port:
+                  number: 3030
