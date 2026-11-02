@@ -149,7 +149,7 @@ spec:
         - name: registry-creds
       containers:
         - name: carnet-web
-          image: registry.bigkraig.com/carnet-web:0.1.56@sha256:81dcabb1e134ed248828f16926ef66d510b6e35866918b2c7a8c998284f7b1f5
+          image: registry.bigkraig.com/carnet-web:0.1.57@sha256:59a2e1d8118a4565b416cdb07299dc55f8e721f2bdc638618d8956f6345f7597
           env:
             # Auth.js sign-in (see README "Authentication"). The web is Apple-only: Pocket ID is left unset here
             # on purpose, so the sign-in page offers nothing but Sign in with Apple. (To bring Pocket ID back, set
