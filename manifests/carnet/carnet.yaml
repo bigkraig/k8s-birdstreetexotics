@@ -79,7 +79,7 @@ spec:
         - name: registry-creds
       containers:
         - name: carnet-api
-          image: registry.bigkraig.com/carnet-api:0.1.45@sha256:9cd5d26fa577709bbc3079b97be6a7bdf89f1d7c3471282246a2899c1a31a78b
+          image: registry.bigkraig.com/carnet-api:0.1.46@sha256:9357bf55419f91de904dc2b3d6f50d278d4df86df6b9e520d769034fa6ef461a
           envFrom:
             - configMapRef: { name: carnet-api-config }
           env:
@@ -217,7 +217,8 @@ spec:
                 port:
                   number: 3000
 ---
-# API — the API's paths on the same host → carnet-api. Every request carries a bearer token the API verifies (the
+# API — the API's paths on the same host → carnet-api (OAuth discovery, registration and token for MCP connectors
+# included; the consent page, /oauth/authorize, is the web's). Every request carries a bearer token the API verifies (the
 # iPhone app, MCP clients and the browser alike); /docs, /openapi.json and the probes are public.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -276,6 +277,34 @@ spec:
                 name: carnet-api
                 port:
                   number: 3040
+          - path: /.well-known/oauth-protected-resource
+            pathType: Prefix
+            backend:
+              service:
+                name: carnet-api
+                port:
+                  number: 3040
+          - path: /.well-known/oauth-authorization-server
+            pathType: Exact
+            backend:
+              service:
+                name: carnet-api
+                port:
+                  number: 3040
+          - path: /oauth/register
+            pathType: Exact
+            backend:
+              service:
+                name: carnet-api
+                port:
+                  number: 3040
+          - path: /oauth/token
+            pathType: Exact
+            backend:
+              service:
+                name: carnet-api
+                port:
+                  number: 3040
 ---
 # BATTERY COLLECTOR — reads the BM7 battery monitors through the garage ESPHome Bluetooth proxy (docs/bm7-battery.md)
 # and publishes them to Home Assistant over MQTT discovery. It must be the proxy's only API client: the proxy sends
@@ -327,7 +356,7 @@ spec:
         - name: registry-creds
       containers:
         - name: collector
-          image: registry.bigkraig.com/carnet-api:0.1.45@sha256:9cd5d26fa577709bbc3079b97be6a7bdf89f1d7c3471282246a2899c1a31a78b
+          image: registry.bigkraig.com/carnet-api:0.1.46@sha256:9357bf55419f91de904dc2b3d6f50d278d4df86df6b9e520d769034fa6ef461a
           args: ["bm7-collector"]
           envFrom:
             - configMapRef: { name: carnet-bm7-config }
