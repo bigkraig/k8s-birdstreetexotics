@@ -22,9 +22,8 @@ data:
   # or a personal access token) and the API checks it itself.
   # Sign in with Apple: the identity tokens' audiences, the iOS app's bundle id and the web's Services ID.
   CARNET_APPLE_AUDIENCES: "com.birdstreetexotics.carnet,com.birdstreetexotics.carnet.web"
-  CARNET_STORAGE_BACKEND: "local"
-  CARNET_STORAGE_DIR: "/data/attachments"
-  # Moving to Backblaze B2 (the tenant's bucket, under carnet/attachments/); key in cnpg-b2-creds.
+  # Attachments live in Backblaze B2 (the tenant's bucket, under carnet/attachments/); key in cnpg-b2-creds.
+  CARNET_STORAGE_BACKEND: "s3"
   CARNET_S3_BUCKET: "ultra-piggy-birdstreetexotics"
   CARNET_S3_PREFIX: "carnet/attachments"
   AWS_ENDPOINT: "https://s3.us-west-004.backblazeb2.com"
@@ -63,7 +62,8 @@ metadata:
 spec:
   replicas: 1
   strategy:
-    type: Recreate            # RWO attachment volume
+    type: RollingUpdate       # no volume to hand over: the new pod starts before the old one stops
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }
   selector:
     matchLabels: { app: carnet-api }
   template:
@@ -108,7 +108,8 @@ spec:
           ports:
             - { name: http, containerPort: 3040 }
           volumeMounts:
-            - { name: attachments, mountPath: /data/attachments }
+            # Read-only for one release, so `carnet-api copy-storage` can pick up anything written just before the switch.
+            - { name: attachments, mountPath: /data/attachments, readOnly: true }
           readinessProbe:
             httpGet: { path: /readyz, port: http }
             initialDelaySeconds: 5
