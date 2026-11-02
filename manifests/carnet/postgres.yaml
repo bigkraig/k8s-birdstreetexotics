@@ -1,0 +1,58 @@
+# Postgres for Carnet via CloudNativePG. This data is the system of record (service history, receipts metadata) —
+# it is backed up: continuous WAL archiving + daily base backups to Backblaze B2 under
+# s3://ultra-piggy-birdstreetexotics/cnpg/carnet/ (this tenant's bucket).
+# Credentials: SealedSecret `cnpg-b2-creds` (NON-master B2 app key for that bucket) in the carnet namespace.
+# Moved here 2026-11-01: created empty by initdb, then filled with pg_restore from the old database's pg_dump.
+# The app connects with the CNPG-generated `carnet-db-app` secret (`uri` key) and runs its own migrations on boot.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: carnet-db
+  namespace: carnet
+spec:
+  inheritedMetadata:
+    labels:
+      velero.io/exclude-from-backup: "true"   # barman-backed to B2; skip Velero FSB of live PG data
+  instances: 1
+  imageName: ghcr.io/cloudnative-pg/postgresql:17
+  monitoring:
+    enablePodMonitor: true
+  storage:
+    size: 5Gi
+    storageClass: ssd-block
+  bootstrap:
+    initdb:
+      database: carnet
+      owner: carnet
+      postInitApplicationSQL:
+        # PG15+: the DB owner doesn't own `public` by default, so the app can't run CREATE in its migrations.
+        - ALTER SCHEMA public OWNER TO carnet
+        - CREATE EXTENSION IF NOT EXISTS pgcrypto
+  backup:
+    retentionPolicy: "30d"
+    barmanObjectStore:
+      destinationPath: "s3://ultra-piggy-birdstreetexotics/cnpg/carnet/"
+      endpointURL: "https://s3.us-west-004.backblazeb2.com"
+      s3Credentials:
+        accessKeyId:
+          name: cnpg-b2-creds
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: cnpg-b2-creds
+          key: SECRET_ACCESS_KEY
+      data:
+        compression: gzip
+      wal:
+        compression: gzip
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: carnet-db-daily
+  namespace: carnet
+spec:
+  immediate: true
+  schedule: "0 30 3 * * *"        # 03:30 daily (6-field CNPG cron)
+  backupOwnerReference: self
+  cluster:
+    name: carnet-db

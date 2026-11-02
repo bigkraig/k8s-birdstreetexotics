@@ -1,0 +1,46 @@
+# The tenant is intra-tenant DEFAULT-DENY (ultra-piggy/manifests/netpol-tenant-relationships.yaml, 2026-09-25):
+# a new app gets no pod->pod access until its flows are declared. vcluster syncs this policy to the host
+# (sync.toHost.networkPolicies), where kube-router enforces it.
+#
+# Declared flows for carnet:
+#   carnet-api -> carnet-db (CNPG instance) :5432
+#   carnet-bm7-collector -> carnet-db :5432
+# Everything else carnet needs is already allowed by the platform: Traefik (kube-system) -> web/api, DNS,
+# CNPG operator -> DB, Prometheus scrapes. Egress (Claude API, B2 WAL archiving) is unrestricted.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: carnet-db-from-api
+  namespace: carnet
+spec:
+  podSelector:
+    matchLabels:
+      cnpg.io/cluster: carnet-db
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: carnet-api
+      ports:
+        - { protocol: TCP, port: 5432 }
+---
+# carnet-bm7-collector -> carnet-db :5432 (it writes battery readings). Its other flows leave the tenant (the ESPHome
+# proxy on the LAN, Home Assistant's MQTT broker) and egress is unrestricted.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: carnet-db-from-bm7-collector
+  namespace: carnet
+spec:
+  podSelector:
+    matchLabels:
+      cnpg.io/cluster: carnet-db
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: carnet-bm7-collector
+      ports:
+        - { protocol: TCP, port: 5432 }

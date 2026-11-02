@@ -1,0 +1,14 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: carnet-apns
+  namespace: carnet
+spec:
+  encryptedData:
+    APNS_KEY: AgAc9doAHwNsHPUcJU12OJTFPsq8pTtYRAltJQDlwwyHMaysftesIVrHM9HU0Eh/2fIan6CeovrDBKqne0qQV7gkXLtl1hU2hRYXu3MEKXyFhrVoGHX3y/tPfRC9Krt1lBTi9h3qTEViYNdicJd8hWKGTMkWosCfus59cMIlxwk5bg2LXgI02I9BlzOEsavGVMvNSspUl+difcEYhe9MXSQgSWp+RwkAKe9b+KBmC/5pBq3pJznf8KaiLZtlpq+oA5SOz8f+o3dAsR/+u+PyFNtsZ6ylBUA19leK4box1eyb6FzgIyEsK9UD92KIKbLJLfqj54V+CorEYfA2riYV8yV/GLwBC7NFqPtBDauhMOqm4pHM9GLM3QZgd9jjTjF27K+5K0voEx6HAA8h9NuOHFWKumz+kWEssRoPFJ03gF5yri9HNIyTGT20IvCAwhGyFqtqKj+nKu74vv06TBAn3HWrdx3CrE/DvYdnIktClp3KSTT5aNWLBPrx8SR3Weq5pLgcw93VzK+h6/d2Cy6WZKfFX+Mp/nz+kmXgHtJFAcIrUfTk+pfdhjZQL/MRICObQmCY29hLBqO2AbFqpmW0xpVEgUgeWIAgu21gvfML8cKxoDh3MzEMWT6f0Y36jTYQnB5dPJqnWiR+9ej/oiOCMtDiaxWoGgnRray025x8/lt0CgLTZ3wuMfhsBu1BOIsGbNkhzN0aXO2vndSO9034JJTI0uiOaXgW6U7joV7GL1tIf7jWlMuOUGzXJNjAMP7wJTFImrIEnH/fzPsScPZaIdx0ajZovd5r0lw5dryC+mJB0jggeyqGmw/05XXJRM3jpr77UT0TrX8urwKLznnpgEC/wqwhuSltJSrTeX9+F7WCecS3PeuD0qfXLlepdVksn05G0cqE0DRrefs2+E0ToMSDShYWMP6pK9ber8h5qE+5cWP5fdtycNA4uGuBevtl1Z1xC2gS6H4s5BpdbI2kVohgqsW15zkwHt3IQPmYe2z+6TPu0YYd8ZKQGMwPmkHENT4TFDOdSCoUocvAq64lhMPP/g==
+  template:
+    metadata:
+      name: carnet-apns
+      namespace: carnet
+    type: Opaque

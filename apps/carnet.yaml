@@ -1,0 +1,23 @@
+# carnet — vehicle maintenance tracker (Rust API + Next.js web + CNPG). Moved here 2026-11-01.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: carnet
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:bigkraig/k8s-birdstreetexotics.git
+    targetRevision: main
+    path: manifests/carnet
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: carnet
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

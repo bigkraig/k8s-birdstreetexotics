@@ -1,0 +1,345 @@
+# Carnet — vehicle maintenance tracker (Rust/Axum API + Next.js web + CNPG Postgres). Moved here
+# 2026-11-01; the data came over with pg_dump/pg_restore and a tar of the attachments volume.
+# Images: registry.bigkraig.com/carnet-api, registry.bigkraig.com/carnet-web (Makefile in the carnet repo).
+# One host, carnet.birdstreetexotics.com: / → web, /v1 /mcp /docs /openapi.json /healthz /readyz → api. The web
+# bundle bakes NEXT_PUBLIC_API_HOST=https://carnet.birdstreetexotics.com. No gate: the app signs people in itself
+# (Sign in with Apple, invite-only). SECRETS (SealedSecrets, sealed with the birdstreetexotics cert; seal-secrets.sh):
+# registry-creds, carnet-api-secrets, carnet-web-secrets, carnet-apns, carnet-bm7-secrets, cnpg-b2-creds.
+apiVersion: v1
+kind: Namespace
+metadata: { name: carnet }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: carnet-api-config
+  namespace: carnet
+data:
+  CARNET_BIND_ADDRESS: "0.0.0.0:3040"
+  CARNET_PUBLIC_URL: "https://carnet.birdstreetexotics.com"
+  CARNET_AUTH_MODE: "token"
+  # No trusted identity header and no OIDC issuer: every request carries a Carnet token (minted by Sign in with Apple,
+  # or a personal access token) and the API checks it itself.
+  # Sign in with Apple: the identity tokens' audiences, the iOS app's bundle id and the web's Services ID.
+  CARNET_APPLE_AUDIENCES: "com.birdstreetexotics.carnet,com.birdstreetexotics.carnet.web"
+  CARNET_STORAGE_BACKEND: "local"
+  CARNET_STORAGE_DIR: "/data/attachments"
+  CARNET_MAX_UPLOAD_MB: "25"
+  CARNET_CORS_ORIGINS: "https://carnet.birdstreetexotics.com"
+  CARNET_ANTHROPIC_MODEL: "claude-opus-5"
+  CARNET_LOG_FORMAT: "json"
+  RUST_LOG: "info,tower_http=info,sqlx=warn"
+  # iOS push (battery alerts). The .p8 key is APNS_KEY in the carnet-apns SealedSecret; the key belongs to the
+  # Bird Street Exotics team, so it works for every app of that team (Spotter uses the same key).
+  CARNET_APNS_KEY_ID: "9VBFQLHPD7"
+  CARNET_APNS_TEAM_ID: "96A2DBRK62"
+  CARNET_APNS_TOPIC: "com.birdstreetexotics.carnet"
+  CARNET_TIMEZONE: "America/Los_Angeles"
+  # Home Assistant, for voltage statistics of trips uploaded by the iOS app (token in carnet-bm7-secrets).
+  CARNET_HA_URL: "http://192.168.1.161:8123"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: carnet-attachments
+  namespace: carnet
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: ssd-block
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: carnet-api
+  namespace: carnet
+spec:
+  replicas: 0                 # 0 until the data is restored (cutover); then 1
+  strategy:
+    type: Recreate            # RWO attachment volume
+  selector:
+    matchLabels: { app: carnet-api }
+  template:
+    metadata:
+      labels: { app: carnet-api }
+    spec:
+      runtimeClassName: kata
+      # The attachments volume mounts root-owned; fsGroup makes it writable by the image's carnet user (10001).
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        fsGroupChangePolicy: OnRootMismatch
+      imagePullSecrets:
+        - name: registry-creds
+      containers:
+        - name: carnet-api
+          image: registry.bigkraig.com/carnet-api:0.1.42@sha256:1a7ef047a0f0f3efe3dee49cfb0b5aa986b3429f17f316866a1d795ca243303f
+          envFrom:
+            - configMapRef: { name: carnet-api-config }
+          env:
+            - name: CARNET_DATABASE_URL
+              valueFrom: { secretKeyRef: { name: carnet-db-app, key: uri } }
+            - name: ANTHROPIC_API_KEY
+              valueFrom: { secretKeyRef: { name: carnet-api-secrets, key: ANTHROPIC_API_KEY, optional: true } }
+            - name: CARNET_APNS_KEY
+              valueFrom: { secretKeyRef: { name: carnet-apns, key: APNS_KEY, optional: true } }
+            - name: CARNET_HA_TOKEN
+              valueFrom: { secretKeyRef: { name: carnet-bm7-secrets, key: CARNET_HA_TOKEN, optional: true } }
+            - name: CARNET_CONNECT_KEY       # encrypts connected-car (Porsche Connect) refresh tokens
+              valueFrom: { secretKeyRef: { name: carnet-api-secrets, key: CARNET_CONNECT_KEY, optional: true } }
+            # Sign-in is Apple-only (iPhone: Sign in with Apple → Carnet token; web: Sign in with Apple via Auth.js),
+            # and invite-only: CARNET_SIGNUP defaults to `invite`, so a first sign-in needs a row in `invitations`
+            # (Settings → People, or `carnet-api invite --email …`). No OIDC issuer is configured on purpose.
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits:   { memory: 512Mi }        # Kata sizes the VM to this
+          ports:
+            - { name: http, containerPort: 3040 }
+          volumeMounts:
+            - { name: attachments, mountPath: /data/attachments }
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 15
+            periodSeconds: 30
+      volumes:
+        - name: attachments
+          persistentVolumeClaim: { claimName: carnet-attachments }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: carnet-api
+  namespace: carnet
+spec:
+  selector: { app: carnet-api }
+  ports:
+    - { name: http, port: 3040, targetPort: 3040 }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: carnet-web
+  namespace: carnet
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }
+  selector:
+    matchLabels: { app: carnet-web }
+  template:
+    metadata:
+      labels: { app: carnet-web }
+      # Bump to roll the pod after carnet-web-secrets changes (env from a Secret is read at start).
+      annotations: { carnet.birdstreetexotics.com/secrets-rev: "3" }
+    spec:
+      runtimeClassName: kata
+      imagePullSecrets:
+        - name: registry-creds
+      containers:
+        - name: carnet-web
+          image: registry.bigkraig.com/carnet-web:0.1.52@sha256:a30fee56068192b39fc53f03016597363b8c1d38d3fb648ba6619f37f7596fa2
+          env:
+            # Auth.js sign-in (see README "Authentication"). The web is Apple-only: Pocket ID is left unset here
+            # on purpose, so the sign-in page offers nothing but Sign in with Apple. (To bring Pocket ID back, set
+            # AUTH_POCKET_ID_ISSUER / AUTH_POCKET_ID_ID and an AUTH_POCKET_ID_SECRET key.)
+            - name: AUTH_URL
+              value: "https://carnet.birdstreetexotics.com"
+            - name: AUTH_SECRET
+              valueFrom: { secretKeyRef: { name: carnet-web-secrets, key: AUTH_SECRET } }
+            # Sign in with Apple on the web: a Services ID (Apple Developer → Identifiers) with Sign in with Apple
+            # enabled for carnet.birdstreetexotics.com and return URL https://carnet.birdstreetexotics.com/api/auth/callback/apple, and
+            # a Sign in with Apple key. Off until AUTH_APPLE_KEY_ID / AUTH_APPLE_PRIVATE_KEY exist in the secret.
+            - name: AUTH_APPLE_ID
+              value: "com.birdstreetexotics.carnet.web"
+            - name: AUTH_APPLE_TEAM_ID
+              value: "96A2DBRK62"
+            - name: AUTH_APPLE_KEY_ID
+              valueFrom: { secretKeyRef: { name: carnet-web-secrets, key: AUTH_APPLE_KEY_ID, optional: true } }
+            - name: AUTH_APPLE_PRIVATE_KEY
+              valueFrom: { secretKeyRef: { name: carnet-web-secrets, key: AUTH_APPLE_PRIVATE_KEY, optional: true } }
+            # The Apple exchange runs server side, straight to the API service.
+            # Through the ingress on purpose: from this kata pod the API's ClusterIP is unreachable (fetch failed,
+            # by short name and by FQDN), while the public hostname is how the pod already reaches Apple.
+            - name: CARNET_API_INTERNAL_URL
+              value: "https://carnet.birdstreetexotics.com"
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits:   { memory: 512Mi }
+          ports:
+            - { name: http, containerPort: 3000 }
+          readinessProbe:
+            tcpSocket: { port: 3000 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: carnet-web
+  namespace: carnet
+spec:
+  selector: { app: carnet-web }
+  ports:
+    - { name: http, port: 3000, targetPort: 3000 }
+---
+# WEB — carnet.birdstreetexotics.com/ → carnet-web. TLS: only router.tls (the domain wildcard is in Traefik's SNI pool;
+# never set spec.tls here, vcluster mangles it). No gate in front: the app signs people in itself.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: carnet-web
+  namespace: carnet
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.priority: "1000"
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: carnet.birdstreetexotics.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: carnet-web
+                port:
+                  number: 3000
+---
+# API — the API's paths on the same host → carnet-api. Every request carries a bearer token the API verifies (the
+# iPhone app, MCP clients and the browser alike); /docs, /openapi.json and the probes are public.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: carnet-api
+  namespace: carnet
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.priority: "2000"
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: carnet.birdstreetexotics.com
+      http:
+        paths:
+          - path: /v1
+            pathType: Prefix
+            backend:
+              service:
+                name: carnet-api
+                port:
+                  number: 3040
+          - path: /mcp
+            pathType: Prefix
+            backend:
+              service:
+                name: carnet-api
+                port:
+                  number: 3040
+          - path: /openapi.json
+            pathType: Exact
+            backend:
+              service:
+                name: carnet-api
+                port:
+                  number: 3040
+          - path: /docs
+            pathType: Prefix
+            backend:
+              service:
+                name: carnet-api
+                port:
+                  number: 3040
+          - path: /healthz
+            pathType: Exact
+            backend:
+              service:
+                name: carnet-api
+                port:
+                  number: 3040
+          - path: /readyz
+            pathType: Exact
+            backend:
+              service:
+                name: carnet-api
+                port:
+                  number: 3040
+---
+# BATTERY COLLECTOR — reads the BM7 battery monitors through the garage ESPHome Bluetooth proxy (docs/bm7-battery.md)
+# and publishes them to Home Assistant over MQTT discovery. It must be the proxy's only API client: the proxy sends
+# advertisements to one subscriber, so Home Assistant's ESPHome entry for the proxy is disabled when this runs.
+# Same image as the API; one replica, never two.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: carnet-bm7-config
+  namespace: carnet
+data:
+  CARNET_BM7_PROXY: "192.168.1.58:6053"
+  CARNET_BM7_LIVE_SECS: "120"
+  CARNET_BM7_HISTORY_SECS: "21600"
+  CARNET_BM7_MAX_DEPTH: "255"
+  CARNET_PUBLIC_URL: "https://carnet.birdstreetexotics.com"
+  # Home Assistant, for backfilling voltage statistics of away time (token in carnet-bm7-secrets).
+  CARNET_HA_URL: "http://192.168.1.161:8123"
+  # Battery alerts pushed to the iOS app (key in carnet-apns, as for the API).
+  CARNET_APNS_KEY_ID: "9VBFQLHPD7"
+  CARNET_APNS_TEAM_ID: "96A2DBRK62"
+  CARNET_APNS_TOPIC: "com.birdstreetexotics.carnet"
+  CARNET_TIMEZONE: "America/Los_Angeles"
+  CARNET_LOG_FORMAT: "json"
+  RUST_LOG: "info,sqlx=warn"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: carnet-bm7-collector
+  namespace: carnet
+spec:
+  # Home Assistant's `bm7` integration and its ESPHome entry for garage-ble-proxy are disabled (2026-10-21), so the
+  # collector owns the proxy. Never more than 1. 0 until the data is restored and the old collector is stopped.
+  replicas: 0
+  strategy:
+    type: Recreate            # two collectors would fight over the proxy
+  selector:
+    matchLabels: { app: carnet-bm7-collector }
+  template:
+    metadata:
+      labels: { app: carnet-bm7-collector }
+    spec:
+      runtimeClassName: kata
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 10001
+      imagePullSecrets:
+        - name: registry-creds
+      containers:
+        - name: collector
+          image: registry.bigkraig.com/carnet-api:0.1.42@sha256:1a7ef047a0f0f3efe3dee49cfb0b5aa986b3429f17f316866a1d795ca243303f
+          args: ["bm7-collector"]
+          envFrom:
+            - configMapRef: { name: carnet-bm7-config }
+          env:
+            - name: CARNET_DATABASE_URL
+              valueFrom: { secretKeyRef: { name: carnet-db-app, key: uri } }
+            - name: CARNET_BM7_PROXY_KEY
+              valueFrom: { secretKeyRef: { name: carnet-bm7-secrets, key: CARNET_BM7_PROXY_KEY } }
+            - name: CARNET_MQTT_URL
+              valueFrom: { secretKeyRef: { name: carnet-bm7-secrets, key: CARNET_MQTT_URL, optional: true } }
+            - name: CARNET_HA_TOKEN
+              valueFrom: { secretKeyRef: { name: carnet-bm7-secrets, key: CARNET_HA_TOKEN, optional: true } }
+            - name: CARNET_APNS_KEY
+              valueFrom: { secretKeyRef: { name: carnet-apns, key: APNS_KEY, optional: true } }
+          resources:
+            requests: { cpu: 20m, memory: 64Mi }
+            limits:   { memory: 256Mi }
