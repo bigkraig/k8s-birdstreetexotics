@@ -42,6 +42,7 @@ data:
   # Home Assistant, for voltage statistics of trips uploaded by the iOS app (token in carnet-bm7-secrets).
   CARNET_HA_URL: "http://192.168.1.161:8123"
 ---
+# The attachments as they were before they moved to B2 (2026-11-01). Nothing mounts it; kept until Kraig says otherwise.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -71,12 +72,9 @@ spec:
       labels: { app: carnet-api }
     spec:
       runtimeClassName: kata
-      # The attachments volume mounts root-owned; fsGroup makes it writable by the image's carnet user (10001).
       securityContext:
         runAsUser: 10001
         runAsGroup: 10001
-        fsGroup: 10001
-        fsGroupChangePolicy: OnRootMismatch
       imagePullSecrets:
         - name: registry-creds
       containers:
@@ -108,8 +106,6 @@ spec:
           ports:
             - { name: http, containerPort: 3040 }
           volumeMounts:
-            # Read-only for one release, so `carnet-api copy-storage` can pick up anything written just before the switch.
-            - { name: attachments, mountPath: /data/attachments, readOnly: true }
           readinessProbe:
             httpGet: { path: /readyz, port: http }
             initialDelaySeconds: 5
@@ -118,9 +114,6 @@ spec:
             httpGet: { path: /healthz, port: http }
             initialDelaySeconds: 15
             periodSeconds: 30
-      volumes:
-        - name: attachments
-          persistentVolumeClaim: { claimName: carnet-attachments }
 ---
 apiVersion: v1
 kind: Service
