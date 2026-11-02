@@ -105,7 +105,6 @@ spec:
             limits:   { memory: 512Mi }        # Kata sizes the VM to this
           ports:
             - { name: http, containerPort: 3040 }
-          volumeMounts:
           readinessProbe:
             httpGet: { path: /readyz, port: http }
             initialDelaySeconds: 5
