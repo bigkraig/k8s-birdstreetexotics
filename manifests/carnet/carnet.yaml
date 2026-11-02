@@ -79,7 +79,7 @@ spec:
         - name: registry-creds
       containers:
         - name: carnet-api
-          image: registry.bigkraig.com/carnet-api:0.1.46@sha256:9357bf55419f91de904dc2b3d6f50d278d4df86df6b9e520d769034fa6ef461a
+          image: registry.bigkraig.com/carnet-api:0.1.47@sha256:87564b62556ba9e63e5c811b4bb9dec3594cc86313d34c152dc1c48443720437
           envFrom:
             - configMapRef: { name: carnet-api-config }
           env:
@@ -106,7 +106,7 @@ spec:
           ports:
             - { name: http, containerPort: 3040 }
           lifecycle:
-            preStop: { exec: { command: ["sleep", "5"] } }   # let Traefik drop the pod before it stops (no 502s)
+            preStop: { exec: { command: ["sleep", "15"] } }  # let Traefik drop the pod before it stops (no 502s)
           readinessProbe:
             httpGet: { path: /readyz, port: http }
             initialDelaySeconds: 5
@@ -180,7 +180,7 @@ spec:
           ports:
             - { name: http, containerPort: 3000 }
           lifecycle:
-            preStop: { exec: { command: ["sleep", "5"] } }   # let Traefik drop the pod before it stops (no 502s)
+            preStop: { exec: { command: ["sleep", "15"] } }  # let Traefik drop the pod before it stops (no 502s)
           readinessProbe:
             tcpSocket: { port: 3000 }
             initialDelaySeconds: 10
@@ -360,7 +360,7 @@ spec:
         - name: registry-creds
       containers:
         - name: collector
-          image: registry.bigkraig.com/carnet-api:0.1.46@sha256:9357bf55419f91de904dc2b3d6f50d278d4df86df6b9e520d769034fa6ef461a
+          image: registry.bigkraig.com/carnet-api:0.1.47@sha256:87564b62556ba9e63e5c811b4bb9dec3594cc86313d34c152dc1c48443720437
           args: ["bm7-collector"]
           envFrom:
             - configMapRef: { name: carnet-bm7-config }
