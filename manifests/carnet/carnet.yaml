@@ -105,6 +105,8 @@ spec:
             limits:   { memory: 1Gi }          # Kata sizes the VM to this; uploads up to 100 MB are held in memory
           ports:
             - { name: http, containerPort: 3040 }
+          lifecycle:
+            preStop: { exec: { command: ["sleep", "5"] } }   # let Traefik drop the pod before it stops (no 502s)
           readinessProbe:
             httpGet: { path: /readyz, port: http }
             initialDelaySeconds: 5
@@ -147,7 +149,7 @@ spec:
         - name: registry-creds
       containers:
         - name: carnet-web
-          image: registry.bigkraig.com/carnet-web:0.1.55@sha256:13369cba203b3bc1e24caa33f9cbfccc2a6798f52d6184c41a8cc63b3facc0c9
+          image: registry.bigkraig.com/carnet-web:0.1.56@sha256:81dcabb1e134ed248828f16926ef66d510b6e35866918b2c7a8c998284f7b1f5
           env:
             # Auth.js sign-in (see README "Authentication"). The web is Apple-only: Pocket ID is left unset here
             # on purpose, so the sign-in page offers nothing but Sign in with Apple. (To bring Pocket ID back, set
@@ -177,6 +179,8 @@ spec:
             limits:   { memory: 512Mi }
           ports:
             - { name: http, containerPort: 3000 }
+          lifecycle:
+            preStop: { exec: { command: ["sleep", "5"] } }   # let Traefik drop the pod before it stops (no 502s)
           readinessProbe:
             tcpSocket: { port: 3000 }
             initialDelaySeconds: 10
