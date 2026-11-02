@@ -24,6 +24,11 @@ data:
   CARNET_APPLE_AUDIENCES: "com.birdstreetexotics.carnet,com.birdstreetexotics.carnet.web"
   CARNET_STORAGE_BACKEND: "local"
   CARNET_STORAGE_DIR: "/data/attachments"
+  # Moving to Backblaze B2 (the tenant's bucket, under carnet/attachments/); key in cnpg-b2-creds.
+  CARNET_S3_BUCKET: "ultra-piggy-birdstreetexotics"
+  CARNET_S3_PREFIX: "carnet/attachments"
+  AWS_ENDPOINT: "https://s3.us-west-004.backblazeb2.com"
+  AWS_REGION: "us-west-004"
   CARNET_MAX_UPLOAD_MB: "25"
   CARNET_CORS_ORIGINS: "https://carnet.birdstreetexotics.com"
   CARNET_ANTHROPIC_MODEL: "claude-opus-5"
@@ -76,7 +81,7 @@ spec:
         - name: registry-creds
       containers:
         - name: carnet-api
-          image: registry.bigkraig.com/carnet-api:0.1.43@sha256:5df32b53f75b8b6f4bd129178be7a4a277bc922b0c4a2f9eae860a9c9b2ec6ae
+          image: registry.bigkraig.com/carnet-api:0.1.44@sha256:ac7b9f4b06f48206dc6fc01af0095836ecd16d58c2edd97ac6d050c23d5792ad
           envFrom:
             - configMapRef: { name: carnet-api-config }
           env:
@@ -90,6 +95,10 @@ spec:
               valueFrom: { secretKeyRef: { name: carnet-bm7-secrets, key: CARNET_HA_TOKEN, optional: true } }
             - name: CARNET_CONNECT_KEY       # encrypts connected-car (Porsche Connect) refresh tokens
               valueFrom: { secretKeyRef: { name: carnet-api-secrets, key: CARNET_CONNECT_KEY, optional: true } }
+            - name: AWS_ACCESS_KEY_ID        # B2 key for attachment storage (the same key the database backs up with)
+              valueFrom: { secretKeyRef: { name: cnpg-b2-creds, key: ACCESS_KEY_ID } }
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom: { secretKeyRef: { name: cnpg-b2-creds, key: SECRET_ACCESS_KEY } }
             # Sign-in is Apple-only (iPhone: Sign in with Apple → Carnet token; web: Sign in with Apple via Auth.js),
             # and invite-only: CARNET_SIGNUP defaults to `invite`, so a first sign-in needs a row in `invitations`
             # (Settings → People, or `carnet-api invite --email …`). No OIDC issuer is configured on purpose.
@@ -325,7 +334,7 @@ spec:
         - name: registry-creds
       containers:
         - name: collector
-          image: registry.bigkraig.com/carnet-api:0.1.43@sha256:5df32b53f75b8b6f4bd129178be7a4a277bc922b0c4a2f9eae860a9c9b2ec6ae
+          image: registry.bigkraig.com/carnet-api:0.1.44@sha256:ac7b9f4b06f48206dc6fc01af0095836ecd16d58c2edd97ac6d050c23d5792ad
           args: ["bm7-collector"]
           envFrom:
             - configMapRef: { name: carnet-bm7-config }
