@@ -56,7 +56,7 @@ metadata:
   name: carnet-api
   namespace: carnet
 spec:
-  replicas: 0                 # 0 until the data is restored (cutover); then 1
+  replicas: 1
   strategy:
     type: Recreate            # RWO attachment volume
   selector:
@@ -307,8 +307,8 @@ metadata:
   namespace: carnet
 spec:
   # Home Assistant's `bm7` integration and its ESPHome entry for garage-ble-proxy are disabled (2026-10-21), so the
-  # collector owns the proxy. Never more than 1. 0 until the data is restored and the old collector is stopped.
-  replicas: 0
+  # collector owns the proxy. Never more than 1.
+  replicas: 1
   strategy:
     type: Recreate            # two collectors would fight over the proxy
   selector:
