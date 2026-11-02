@@ -28,7 +28,7 @@ data:
   CARNET_S3_PREFIX: "carnet/attachments"
   AWS_ENDPOINT: "https://s3.us-west-004.backblazeb2.com"
   AWS_REGION: "us-west-004"
-  CARNET_MAX_UPLOAD_MB: "25"
+  CARNET_MAX_UPLOAD_MB: "100"         # owner's manuals run 40 MB+
   CARNET_CORS_ORIGINS: "https://carnet.birdstreetexotics.com"
   CARNET_ANTHROPIC_MODEL: "claude-opus-5"
   CARNET_LOG_FORMAT: "json"
@@ -102,7 +102,7 @@ spec:
             # (Settings → People, or `carnet-api invite --email …`). No OIDC issuer is configured on purpose.
           resources:
             requests: { cpu: 50m, memory: 128Mi }
-            limits:   { memory: 512Mi }        # Kata sizes the VM to this
+            limits:   { memory: 1Gi }          # Kata sizes the VM to this; uploads up to 100 MB are held in memory
           ports:
             - { name: http, containerPort: 3040 }
           readinessProbe:
