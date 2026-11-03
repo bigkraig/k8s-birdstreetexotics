@@ -30,7 +30,7 @@ data:
   AWS_REGION: "us-west-004"
   CARNET_MAX_UPLOAD_MB: "100"         # owner's manuals run 40 MB+
   CARNET_CORS_ORIGINS: "https://carnet.birdstreetexotics.com"
-  CARNET_ANTHROPIC_MODEL: "claude-opus-5"
+  CARNET_ANTHROPIC_MODEL: "claude-sonnet-5-5"
   CARNET_LOG_FORMAT: "json"
   RUST_LOG: "info,tower_http=info,sqlx=warn"
   # iOS push (battery alerts). The .p8 key is APNS_KEY in the carnet-apns SealedSecret; the key belongs to the
