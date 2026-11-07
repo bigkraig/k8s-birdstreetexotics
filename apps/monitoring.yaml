@@ -23,7 +23,7 @@ spec:
   source:
     repoURL: https://prometheus-community.github.io/helm-charts
     chart: kube-prometheus-stack
-    targetRevision: 87.5.1
+    targetRevision: 87.21.0   # CVE sweep 2026-11-07 (same major line)
     helm:
       releaseName: kube-prometheus-stack
       values: |
@@ -99,6 +99,8 @@ spec:
                   resources: { requests: { storage: 1Gi } }
         grafana:
           defaultDashboardsEnabled: true
+          image:
+            tag: "13.1.9"   # newer than the chart's 13.1.1 pin (CVE fixes); drop once the chart catches up
           # Break-glass admin password from the grafana-admin SealedSecret (replaces the default
           # prom-operator); day-to-day login is via the warbler gate → auth.proxy.
           envFromSecret: grafana-admin
