@@ -93,7 +93,7 @@ spec:
         # extracts on the zfs snapshotter. Uses B2's native download API with the
         # same key (AWS_ACCESS_KEY_ID=B2 keyID, AWS_SECRET_ACCESS_KEY=B2 appKey).
         - name: assets
-          image: curlimages/curl:8.11.1
+          image: curlimages/curl:8.23.0@sha256:3fb7e13e5d179a845c97d78204f3f1064d1907037f26a3ebf91710571151fd93
           command:
             - sh
             - -c
@@ -113,7 +113,7 @@ spec:
             - { name: html-src, mountPath: /html-src }
       containers:
         - name: nginx
-          image: nginxinc/nginx-unprivileged:1.27-alpine
+          image: nginxinc/nginx-unprivileged:1.31.7-alpine@sha256:b5047b9b76845eac124358373c6852377c52e4b05834a47647e955dd91cb8f1e
           ports:
             - { name: http, containerPort: 8080 }
           volumeMounts:
