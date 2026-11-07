@@ -1,5 +1,5 @@
-# workbook (was libretto) — Technical Service Information (Rust/Axum API + Next.js web). MOVED bigkraig →
-# birdstreetexotics 2026-11-01. Images live in registry.bigkraig.com: workbook-api / workbook-web.
+# workbook (was libretto) — Technical Service Information (Rust/Axum API + Next.js web). Moved into this
+# tenant 2026-11-01. Images: workbook-api / workbook-web (see the image refs below).
 # DATA: Postgres via CNPG (postgres.yaml); workbook-api (sqlx) connects via WORKBOOK_DATABASE_URL (the CNPG
 # `workbook-db-app` uri) and runs its baked /data/migrations on boot — so we do NOT mount a volume over /data
 # (only config.toml is file-mounted). Intra-tenant api→db is allowed by rel-workbook-postgresql (root netpol).
@@ -9,7 +9,7 @@
 # workbook-web: NEXT_PUBLIC_API_HOST is baked at build time — build with
 #   NEXT_PUBLIC_API_HOST=https://workbook.birdstreetexotics.com (web/.env) and bump the tag below.
 # Both Kata microVMs (memory limits set — Kata OOM-kills without one). SECRETS (SealedSecrets, sealed
-#   with the birdstreetexotics cert): `registry-creds` (registry.bigkraig.com pull).
+#   with the birdstreetexotics cert): `registry-creds` (image registry pull).
 ---
 apiVersion: v1
 kind: Namespace

@@ -1,4 +1,4 @@
-# alertmanager-ntfy — bridges warbler Alertmanager webhooks → warbler ntfy (Phase 7 5c-2).
+# alertmanager-ntfy — bridges this tenant's Alertmanager webhooks → this tenant's ntfy.
 # Alertmanager POSTs to :8000/hook; the bridge formats + publishes to the in-cluster ntfy
 # (http://ntfy/alerts) using seakitteh's token. The token is injected from the ntfy-bridge-token
 # secret by an init container (the bridge has no env-var expansion), so no credential is in git.

@@ -1,7 +1,7 @@
 # Pocket ID: OIDC/passkey identity provider for birdstreetexotics.
 # State lives in Postgres (postgres.yaml); the pod itself is stateless.
-# standard Ingress the vcluster syncs to root Traefik. Unlike warbler (default cert),
-# this domain names its own cert (birdstreetexotics-wildcard-tls, issued by root
+# Exposed via a standard Ingress the vcluster syncs to root Traefik. Traefik's default cert is
+# another domain's, so this domain names its own cert (birdstreetexotics-wildcard-tls, issued by root
 # cert-manager into the host tenant ns). Passkeys REQUIRE real HTTPS at this host.
 ---
 apiVersion: apps/v1

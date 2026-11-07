@@ -2,8 +2,7 @@
 
 Argo CD runs inside the birdstreetexotics vcluster and reconciles this repo
 (`apps/*` = Argo Applications, `manifests/*` = the workloads). Push to `main` →
-Argo syncs. This tenant is isolated: never reference another tenant (bigkraig /
-warbler) from here.
+Argo syncs. This tenant is isolated: never reference another tenant from here.
 
 > **Shell: the user runs `fish`.** All commands must be fish syntax — command
 > substitution is `(cmd)` not `$(cmd)`, inline env is `env VAR=val cmd`, no heredocs.
@@ -13,12 +12,12 @@ warbler) from here.
   single-namespace-syncs every object into the host ns `birdstreetexotics`.
 - Workloads run under **Kata** microVMs (`runtimeClassName: kata`) — set a memory
   `limits` or the guest OOM-kills.
-- **TLS:** Traefik's default cert is `*.warbler.haus`. This domain's wildcard cert
+- **TLS:** Traefik's default cert belongs to another domain. This domain's wildcard cert
   (`birdstreetexotics-wildcard-tls`, issued by ROOT cert-manager into `kube-system`)
   is loaded into Traefik's SNI pool by the host `birdstreetexotics-catchall`
   IngressRoute. Tenant Ingresses use ONLY `router.tls: "true"` — do NOT set
   `spec.tls`/`secretName` (vcluster mangles it on sync, so Traefik can't find it and
-  falls back to the warbler cert).
+  falls back to the default cert).
 - Argo `selfHeal` reverts manual `kubectl` edits — change `replicas:`/config in git.
 
 ## Landing page

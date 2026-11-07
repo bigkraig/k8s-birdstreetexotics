@@ -1,16 +1,16 @@
-# Warbler tenant monitoring — a self-contained kube-prometheus-stack INSIDE the warbler vcluster
-# (Prometheus + Grafana + Alertmanager + kube-state-metrics). Tenant-scoped: it only sees warbler's
-# own apps + CNPG + this vcluster's object state. Host/node/control-plane scraping is OFF — a
+# Tenant monitoring — a self-contained kube-prometheus-stack INSIDE this vcluster
+# (Prometheus + Grafana + Alertmanager + kube-state-metrics). Tenant-scoped: it only sees this
+# tenant's own apps + CNPG + this vcluster's object state. Host/node/control-plane scraping is OFF — a
 # vcluster has no real node, and scraping the host kubelet/cadvisor would leak cross-tenant metrics.
 # DELIBERATE LIMITATION (decided 2026-07): no cadvisor here → NO live container CPU/mem in this
 # Grafana (kube-state-metrics gives object state + requests/limits, not usage). vcluster flattens
-# all warbler namespaces into the single host ns `warbler`, so a clean tenant-scoped cadvisor scrape
+# all of this tenant's namespaces into the single host ns `birdstreetexotics`, so a clean tenant-scoped cadvisor scrape
 # isn't possible without leaking other tenants or breaking the namespace/pod join. Live container
-# CPU/mem for warbler is instead viewed in the OPERATOR Grafana (monitor.bigkraig.com) — its cadvisor
-# already covers namespace=warbler. Do NOT re-enable kubelet here expecting isolated usage metrics.
-# Grafana at monitor.birdstreetexotics.com behind the warbler oauth2-proxy gate (auth.proxy header trust),
+# CPU/mem for this tenant is instead viewed in the platform OPERATOR Grafana — its cadvisor
+# already covers namespace=birdstreetexotics. Do NOT re-enable kubelet here expecting isolated usage metrics.
+# Grafana at monitor.birdstreetexotics.com behind this tenant's oauth2-proxy gate (auth.proxy header trust),
 # same approach as the operator Grafana. runc (monitoring-infra exception, like the root stack).
-# Alertmanager→ntfy routing (ntfy.warbler.haus) is added in a follow-up once ntfy is bootstrapped.
+# Alertmanager→ntfy routing (ntfy.birdstreetexotics.com) is added in a follow-up once ntfy is bootstrapped.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -102,9 +102,9 @@ spec:
           image:
             tag: "13.1.9"   # newer than the chart's 13.1.1 pin (CVE fixes); drop once the chart catches up
           # Break-glass admin password from the grafana-admin SealedSecret (replaces the default
-          # prom-operator); day-to-day login is via the warbler gate → auth.proxy.
+          # prom-operator); day-to-day login is via this tenant's forward-auth gate → auth.proxy.
           envFromSecret: grafana-admin
-          # CloudNativePG dashboard for warbler's own DBs (affine-db, dispatcharr-db). No
+          # CloudNativePG dashboard for this tenant's own databases. No
           # node-exporter/cert-manager/velero here — those are operator-cluster scoped.
           dashboardProviders:
             dashboardproviders.yaml:
@@ -143,7 +143,7 @@ spec:
               headers: "Login:X-Auth-Request-User Groups:X-Auth-Request-Groups"
               whitelist: 10.42.0.0/16
             users:
-              auto_assign_org_role: Admin   # gate admits only warbler Pocket ID users
+              auto_assign_org_role: Admin   # gate admits only this tenant's Pocket ID users
           ingress:
             enabled: true
             ingressClassName: traefik

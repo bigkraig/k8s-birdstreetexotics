@@ -1,4 +1,4 @@
-# Warbler tenant ntfy (self-hosted push at ntfy.warbler.haus) for tenant alerting.
+# Tenant ntfy (self-hosted push at ntfy.birdstreetexotics.com) for tenant alerting.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

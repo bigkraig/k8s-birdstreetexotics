@@ -2,7 +2,7 @@
 # Static placeholder: nginx serving an HTML page from a ConfigMap. PUBLIC (ungated) —
 # no forward-auth middleware. Kata microVM like every other tenant workload.
 #
-# TLS: Traefik's DEFAULT cert is *.warbler.haus, so this domain must name its own
+# TLS: Traefik's DEFAULT cert belongs to another domain, so this domain must name its own
 # secret. The cert `birdstreetexotics-wildcard-tls` is issued by the ROOT cluster's
 # cert-manager into the HOST tenant namespace `birdstreetexotics` (where vcluster
 # single-namespace-syncs every object in this vcluster). vcluster passes through a

@@ -1,4 +1,4 @@
-# workbook — Technical Service Information (Rust API + Next.js web + CNPG). Moved from bigkraig (was libretto).
+# workbook — Technical Service Information (Rust API + Next.js web + CNPG). Moved into this tenant (was libretto).
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
