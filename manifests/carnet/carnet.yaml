@@ -79,7 +79,7 @@ spec:
         - name: registry-creds
       containers:
         - name: carnet-api
-          image: registry.bigkraig.com/carnet-api:0.1.73@sha256:8816eb87aaf7f6aa89f142f44a41b5e5d98b92cf2ce3bcb18cbd680d688b8fea
+          image: registry.bigkraig.com/carnet-api:0.1.74@sha256:ea4313ec55a5430d31780189d918176396f9688849925f9a23e5e285e712f9ec
           envFrom:
             - configMapRef: { name: carnet-api-config }
           env:
@@ -360,7 +360,7 @@ spec:
         - name: registry-creds
       containers:
         - name: collector
-          image: registry.bigkraig.com/carnet-api:0.1.73@sha256:8816eb87aaf7f6aa89f142f44a41b5e5d98b92cf2ce3bcb18cbd680d688b8fea
+          image: registry.bigkraig.com/carnet-api:0.1.74@sha256:ea4313ec55a5430d31780189d918176396f9688849925f9a23e5e285e712f9ec
           args: ["bm7-collector"]
           envFrom:
             - configMapRef: { name: carnet-bm7-config }
