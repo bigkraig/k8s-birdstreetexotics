@@ -76,7 +76,7 @@ spec:
         - name: registry-creds
       containers:
         - name: workbook-api
-          image: registry.bigkraig.com/workbook-api:0.1.37@sha256:2b71b3c843e54911aec0b9dc7adbd3f02826f02e8c175dfbdad9e8ded55dafa2
+          image: &api-image registry.bigkraig.com/workbook-api:0.1.37@sha256:2b71b3c843e54911aec0b9dc7adbd3f02826f02e8c175dfbdad9e8ded55dafa2
           env:
             - name: WORKBOOK_DATABASE_URL
               valueFrom: { secretKeyRef: { name: workbook-db-app, key: uri } }
@@ -91,6 +91,23 @@ spec:
             tcpSocket: { port: 3030 }
             initialDelaySeconds: 10
             periodSeconds: 10
+      # `workbook api` deliberately doesn't migrate (it must boot with the DB down), so schema
+      # changes run here first: a new pod only starts serving once its migrations are applied
+      # (0.1.37 went live querying a column that didn't exist yet). If the DB is unreachable this
+      # retries with backoff — during a rollout the old pod keeps serving (maxUnavailable: 0).
+      # Same image as the API container via the &api-image anchor, so a tag bump covers both.
+      initContainers:
+        - name: migrate
+          image: *api-image
+          command: ["workbook", "migrate"]
+          env:
+            - name: WORKBOOK_DATABASE_URL
+              valueFrom: { secretKeyRef: { name: workbook-db-app, key: uri } }
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits:   { memory: 512Mi }
+          volumeMounts:
+            - { name: config, mountPath: /data/config.toml, subPath: config.toml }
       volumes:
         - name: config
           configMap:
