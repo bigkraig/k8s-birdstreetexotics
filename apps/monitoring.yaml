@@ -23,7 +23,7 @@ spec:
   source:
     repoURL: https://prometheus-community.github.io/helm-charts
     chart: kube-prometheus-stack
-    targetRevision: 87.21.0   # CVE sweep 2026-11-07 (same major line)
+    targetRevision: 93.3.0    # CVE sweep 2026-11-16 (87→93: operator v0.95, prometheus v3.16, alertmanager v0.35; CRDs via SSA)
     helm:
       releaseName: kube-prometheus-stack
       values: |
@@ -52,6 +52,8 @@ spec:
             kubeScheduler: false
             kubeControllerManager: false
         prometheus:
+          serviceAccount:
+            createTokenSecret: false   # only control-plane ServiceMonitors use it, all disabled here
           prometheusSpec:
             retention: 15d
             retentionSize: "8GB"
@@ -100,7 +102,8 @@ spec:
         grafana:
           defaultDashboardsEnabled: true
           image:
-            tag: "13.1.9"   # newer than the chart's 13.1.1 pin (CVE fixes); drop once the chart catches up
+            tag: "13.1.10-distroless"   # chart 93.3.0 defaults to 13.3.1-distroless (H20); the 13.1 patch line is fresher (H3)
+          testFramework: { enabled: false }   # helm-test hook pod; nothing runs `helm test` here
           # Break-glass admin password from the grafana-admin SealedSecret (replaces the default
           # prom-operator); day-to-day login is via this tenant's forward-auth gate → auth.proxy.
           envFromSecret: grafana-admin
