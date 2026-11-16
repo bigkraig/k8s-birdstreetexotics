@@ -76,7 +76,7 @@ spec:
         - name: registry-creds
       containers:
         - name: workbook-api
-          image: registry.bigkraig.com/workbook-api:0.1.35
+          image: registry.bigkraig.com/workbook-api:0.1.36@sha256:18f93c121637616bbc74884b998a9042c3bae13e691e6a3c698dd688a6aad2be
           env:
             - name: WORKBOOK_DATABASE_URL
               valueFrom: { secretKeyRef: { name: workbook-db-app, key: uri } }
@@ -127,7 +127,7 @@ spec:
         - name: registry-creds
       containers:
         - name: workbook-web
-          image: registry.bigkraig.com/workbook-web:0.2.27@sha256:876bafcbb2b32ba0703b8fded6fdb0ec399afe06e438b45af3fa697d967595d0
+          image: registry.bigkraig.com/workbook-web:0.2.28@sha256:f94c853b3defc05020f97307ce0db5d37321371aad105e1f4129321e19a7e82a
           resources:
             requests: { cpu: 50m, memory: 256Mi }
             limits:   { memory: 1Gi }
