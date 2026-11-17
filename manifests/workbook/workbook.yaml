@@ -144,7 +144,7 @@ spec:
         - name: registry-creds
       containers:
         - name: workbook-web
-          image: registry.bigkraig.com/workbook-web:0.2.29@sha256:f27a3278a33260423850b3e51e94f767fab45ba17236d0555cc5de221d5fbe3c
+          image: registry.bigkraig.com/workbook-web:0.2.30@sha256:226415c3696463cba3f018e1478f1c46a4de699ded7832019a4ad667752fa2c0
           resources:
             requests: { cpu: 50m, memory: 256Mi }
             limits:   { memory: 1Gi }
