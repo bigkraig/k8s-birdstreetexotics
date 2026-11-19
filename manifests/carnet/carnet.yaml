@@ -79,7 +79,7 @@ spec:
         - name: registry-creds
       containers:
         - name: carnet-api
-          image: registry.bigkraig.com/carnet-api:0.1.81@sha256:36f35f6de1ece7de264d07ef6ae2604ceffed858b246b73bf29b9856dc67471c
+          image: registry.bigkraig.com/carnet-api:0.1.82@sha256:7592aa3caa659c52201e6dfe15701075d7b24fea531d82bca2389bc191eac6ab
           envFrom:
             - configMapRef: { name: carnet-api-config }
           env:
@@ -149,7 +149,7 @@ spec:
         - name: registry-creds
       containers:
         - name: carnet-web
-          image: registry.bigkraig.com/carnet-web:0.1.91@sha256:003fd42b20f7bb1d38e70a55937471e6553dd407590a710fac452195c7eca2c5
+          image: registry.bigkraig.com/carnet-web:0.1.92@sha256:52c130d113439544615731f412c457ecf1c95366d28cad86d2a2792cd959dde3
           env:
             # Auth.js sign-in (see README "Authentication"). The web is Apple-only: Pocket ID is left unset here
             # on purpose, so the sign-in page offers nothing but Sign in with Apple. (To bring Pocket ID back, set
@@ -360,7 +360,7 @@ spec:
         - name: registry-creds
       containers:
         - name: collector
-          image: registry.bigkraig.com/carnet-api:0.1.81@sha256:36f35f6de1ece7de264d07ef6ae2604ceffed858b246b73bf29b9856dc67471c
+          image: registry.bigkraig.com/carnet-api:0.1.82@sha256:7592aa3caa659c52201e6dfe15701075d7b24fea531d82bca2389bc191eac6ab
           args: ["bm7-collector"]
           envFrom:
             - configMapRef: { name: carnet-bm7-config }
