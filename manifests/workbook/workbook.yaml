@@ -76,7 +76,7 @@ spec:
         - name: registry-creds
       containers:
         - name: workbook-api
-          image: &api-image registry.bigkraig.com/workbook-api:0.1.38@sha256:266909c0c64bf03d444f1306aedff26379df2f6a7367f92f7d4e5a1231285a1b
+          image: &api-image registry.bigkraig.com/workbook-api:0.1.39@sha256:ba47a41b0c2726a11daedbef28b74eede4bbfc08fc32cd1c43cc43c0f7684e3f
           env:
             - name: WORKBOOK_DATABASE_URL
               valueFrom: { secretKeyRef: { name: workbook-db-app, key: uri } }
